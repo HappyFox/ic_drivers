@@ -1,6 +1,6 @@
 import math
 
-from .pca9685 import Pca9685
+from ..pca9685 import Pca9685
 
 FREEWHEEL = 0
 FORWARD = 1
