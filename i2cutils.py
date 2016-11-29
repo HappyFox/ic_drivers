@@ -1,3 +1,4 @@
+
 class I2cRegDevice:
 
     def __init__(self, i2c, address):

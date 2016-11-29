@@ -2,10 +2,6 @@ import math
 
 from ..pca9685 import Pca9685
 
-FREEWHEEL = 0
-FORWARD = 1
-BRAKE = 3
-BACKWARD = 2
 
 
 class InvalidDirectionError(Exception):
@@ -26,21 +22,26 @@ def get_motor_shield(i2c, address=0x60):
 
 class Motor:
 
+    FREEWHEEL = 0
+    FORWARD = 1
+    BRAKE = 3
+    BACKWARD = 2
+
     def __init__(self, pwm, in_1, in_2):
         self.pwm = pwm
         self.in_1 = in_1
         self.in_2 = in_2
 
         self.invert = False
-        self.direction(FREEWHEEL)
+        self.dir(self.FREEWHEEL)
 
     def speed(self, speed=None):
-        if not speed:
+        if speed is None:
             return self.pwm.duty()
 
         self.pwm.duty(speed)
 
-    def direction(self, direction=None):
+    def dir(self, direction=None):
         if direction is None:
             direction = self.in_1.value()
             direction += self.in_2.value() << 1
