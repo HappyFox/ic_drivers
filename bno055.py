@@ -8,14 +8,6 @@ from drivers.i2cutils import I2cRegDevice
 AXIS_MAP_CONFIG = const(0x41)
 AXIS_MAP_SIGN = const(0x42)
 
-AXIS_MAP_P0 = const(0x21 << 3 + 0x04)
-AXIS_MAP_P1 = const(0x24 << 3 + 0x00)
-AXIS_MAP_P2 = const(0x24 << 3 + 0x06)
-AXIS_MAP_P3 = const(0x21 << 3 + 0x02)
-AXIS_MAP_P4 = const(0x24 << 3 + 0x03)
-AXIS_MAP_P5 = const(0x21 << 3 + 0x01)
-AXIS_MAP_P6 = const(0x21 << 3 + 0x07)
-AXIS_MAP_P7 = const(0x24 << 3 + 0x05)
 
 OP_MODE = const(0x3D)
 OP_MODE_CONFIG = const(0b0000)
@@ -51,11 +43,21 @@ class SystemError(Exception):
 
 class Bno055:
 
-    def __init__(self, i2c, axis=AXIS_MAP_P1, address=0x28):
+    AXIS_MAP_P0 = const((0x21 << 3) + 0x04)
+    AXIS_MAP_P1 = const((0x24 << 3) + 0x00)
+    AXIS_MAP_P2 = const((0x24 << 3) + 0x06)
+    AXIS_MAP_P3 = const((0x21 << 3) + 0x02)
+    AXIS_MAP_P4 = const((0x24 << 3) + 0x03)
+    AXIS_MAP_P5 = const((0x21 << 3) + 0x01)
+    AXIS_MAP_P6 = const((0x21 << 3) + 0x07)
+    AXIS_MAP_P7 = const((0x24 << 3) + 0x05)
+
+    def __init__(self, i2c, axises=AXIS_MAP_P1, address=0x28):
         self.dev = I2cRegDevice(i2c, address)
         self.eul_buf = bytearray(EUL_ORIENT_LEN)
+        self.init(axises)
 
-    def init(self):
+    def init(self, axises=AXIS_MAP_P1):
         self.reset()
 
         try:
@@ -64,7 +66,6 @@ class Bno055:
             status = -1
 
         while status != SYS_STATUS_IDLE:
-            print("re-reading!")
             if status == SYS_STATUS_ERROR:
                 raise SystemError()
 
@@ -73,6 +74,8 @@ class Bno055:
                 status = self.dev[SYS_STATUS]
             except OSError:
                 status = -1
+
+        self._set_axises(axises)
 
         self.mode(OP_MODE_NDOF)
 
@@ -92,6 +95,12 @@ class Bno055:
     def reset(self):
         self.dev[SYS_TRIGGER] = SYS_TRIGGER_RST_SYS
 
+    def _set_axises(self, axises):
+        print(axises >> 3)
+        print(axises & 0b111)
+        self.dev[AXIS_MAP_CONFIG] = axises >> 3
+        self.dev[AXIS_MAP_SIGN] = axises & 0b111
+
     def mode(self, mode=None):
         if mode is None:
             return self.dev[OP_MODE]
@@ -101,7 +110,7 @@ class Bno055:
         # Just sleep the full 19 ms for switching to config mode.
         time.sleep_ms(19)
 
-    def get_orientation(self):
+    def get_pos(self):
         self.dev.readfrom_mem_into(EUL_ORIENT_START, self.eul_buf)
         vals = ustruct.unpack("<hhh", self.eul_buf)
 
