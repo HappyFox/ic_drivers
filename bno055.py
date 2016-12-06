@@ -8,6 +8,7 @@ from drivers.i2cutils import I2cRegDevice
 AXIS_MAP_CONFIG = const(0x41)
 AXIS_MAP_SIGN = const(0x42)
 
+CALIB_STAT = const(0x35)
 
 OP_MODE = const(0x3D)
 OP_MODE_CONFIG = const(0b0000)
@@ -96,8 +97,6 @@ class Bno055:
         self.dev[SYS_TRIGGER] = SYS_TRIGGER_RST_SYS
 
     def _set_axises(self, axises):
-        print(axises >> 3)
-        print(axises & 0b111)
         self.dev[AXIS_MAP_CONFIG] = axises >> 3
         self.dev[AXIS_MAP_SIGN] = axises & 0b111
 
@@ -115,3 +114,12 @@ class Bno055:
         vals = ustruct.unpack("<hhh", self.eul_buf)
 
         return vals[0]/16.0, vals[1]/16.0, vals[2]/16.0
+
+    def calib_state(self):
+        state = self.dev[CALIB_STAT]
+        sys_calib = bool(state & (3<<6))
+        gyr_calib = bool(state & (3<<4))
+        acc_calib = bool(state & (3<<2))
+        mag_calib = bool(state & 3)
+
+        return sys_calib, gyr_calib, acc_calib, mag_calib
