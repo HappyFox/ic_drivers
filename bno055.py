@@ -9,6 +9,8 @@ AXIS_MAP_CONFIG = const(0x41)
 AXIS_MAP_SIGN = const(0x42)
 
 CALIB_STAT = const(0x35)
+CALIB_START = const(0x55)
+CALIB_LEN = const(21)
 
 OP_MODE = const(0x3D)
 OP_MODE_CONFIG = const(0b0000)
@@ -53,12 +55,12 @@ class Bno055:
     AXIS_MAP_P6 = const((0x21 << 3) + 0x07)
     AXIS_MAP_P7 = const((0x24 << 3) + 0x05)
 
-    def __init__(self, i2c, axises=AXIS_MAP_P1, address=0x28):
+    def __init__(self, i2c, axises=AXIS_MAP_P1, calib_data=None, address=0x28):
         self.dev = I2cRegDevice(i2c, address)
         self.eul_buf = bytearray(EUL_ORIENT_LEN)
-        self.init(axises)
+        self.init(axises, calib_data)
 
-    def init(self, axises=AXIS_MAP_P1):
+    def init(self, axises=AXIS_MAP_P1, calib_data=None):
         self.reset()
 
         try:
@@ -76,6 +78,11 @@ class Bno055:
             except OSError:
                 status = -1
 
+        if calib_data:
+            if len(calib_data) != CALIB_LEN:
+                raise SystemError("Invalid calibrate data.")
+            self.dev.writeto_mem(CALIB_START, calib_data)
+
         self._set_axises(axises)
 
         self.mode(OP_MODE_NDOF)
@@ -83,7 +90,6 @@ class Bno055:
         status = self.dev[SYS_STATUS]
 
         while status != SYS_STATUS_FUSION_RUNNING:
-            print("re-reading! - wait for fusion")
             if status == 1:
                 raise SystemError()
 
@@ -117,9 +123,20 @@ class Bno055:
 
     def calib_state(self):
         state = self.dev[CALIB_STAT]
-        sys_calib = bool(state & (3<<6))
-        gyr_calib = bool(state & (3<<4))
-        acc_calib = bool(state & (3<<2))
+        sys_calib = bool(state & (3 << 6))
+        gyr_calib = bool(state & (3 << 4))
+        acc_calib = bool(state & (3 << 2))
         mag_calib = bool(state & 3)
 
         return sys_calib, gyr_calib, acc_calib, mag_calib
+
+    def get_calib_data(self):
+        self.mode(OP_MODE_CONFIG)
+
+        calib_data = self.dev.readfrom_mem(CALIB_START, CALIB_LEN)
+
+        self.mode(OP_MODE_NDOF)
+
+        return calib_data
+
+
