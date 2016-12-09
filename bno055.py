@@ -12,6 +12,9 @@ CALIB_STAT = const(0x35)
 CALIB_START = const(0x55)
 CALIB_LEN = const(21)
 
+GRAV_START = const(0x2E)
+LIA_START = const(0x28)
+
 OP_MODE = const(0x3D)
 OP_MODE_CONFIG = const(0b0000)
 OP_MODE_ACC_ONLY = const(0b0001)
@@ -115,11 +118,20 @@ class Bno055:
         # Just sleep the full 19 ms for switching to config mode.
         time.sleep_ms(19)
 
-    def get_pos(self):
-        self.dev.readfrom_mem_into(EUL_ORIENT_START, self.eul_buf)
+    def _get_3_int16(self,addr):
+        self.dev.readfrom_mem_into(addr, self.eul_buf)
         vals = ustruct.unpack("<hhh", self.eul_buf)
 
         return vals[0]/16.0, vals[1]/16.0, vals[2]/16.0
+
+    def get_orient(self):
+        return self._get_3_int16(EUL_ORIENT_START)
+
+    def get_lin_acc(self):
+        return self._get_3_int16(LIA_START)
+
+    def get_grav(self):
+        return self._get_3_int16(GRAV_START)
 
     def calib_state(self):
         state = self.dev[CALIB_STAT]
