@@ -118,20 +118,20 @@ class Bno055:
         # Just sleep the full 19 ms for switching to config mode.
         time.sleep_ms(19)
 
-    def _get_3_int16(self,addr):
+    def _get_3_int16(self, addr, div):
         self.dev.readfrom_mem_into(addr, self.eul_buf)
         vals = ustruct.unpack("<hhh", self.eul_buf)
 
-        return vals[0]/16.0, vals[1]/16.0, vals[2]/16.0
+        return vals[0]/div, vals[1]/div, vals[2]/div
 
     def get_orient(self):
-        return self._get_3_int16(EUL_ORIENT_START)
+        return self._get_3_int16(EUL_ORIENT_START, 16.0)
 
     def get_lin_acc(self):
-        return self._get_3_int16(LIA_START)
+        return self._get_3_int16(LIA_START, 100)
 
     def get_grav(self):
-        return self._get_3_int16(GRAV_START)
+        return self._get_3_int16(GRAV_START, 100)
 
     def calib_state(self):
         state = self.dev[CALIB_STAT]
