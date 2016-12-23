@@ -14,8 +14,11 @@ MIN_PRESCALE = 0x03
 LED_BASE_ADDR = 0x06
 LED_SIZE = 0x04
 
+_ALL_LED_START = const(0xFA)
 
 ALL_BIT = 12
+
+_25_MHZ = const(25000000)
 
 
 class PreScaleChangeError(Exception):
@@ -117,19 +120,26 @@ class Pin:
 
 class Pca9685:
 
-    def __init__(self, i2c, address, clock=25000000.0):
+    def __init__(self, i2c, address, freq=50.0, clock=_25_MHZ):
         self.dev = I2cRegDevice(i2c, address)
-        self._freq = 0
-        self._prescale = 0
-        self.clock = clock
-        self.reset()
+
 
         self.pins = []
 
         for _ in range(16):
             self.pins.append(None)
 
-    def reset(self):
+        self.init(freq, clock)
+
+    def init(self, freq=50.0, clock=_25_MHZ):
+        self.dev[MODE1] = 0x00
+        self._prescale = 0
+        self.clock = clock
+        self.freq(freq)
+        self.dev.writeto_mem(_ALL_LED_START, b'\x00' * 4)
+
+    def deinit(self):
+        self.dev.writeto_mem(_ALL_LED_START, b'\x00' * 4)
         self.dev[MODE1] = 0x00
 
     def freq(self, freq_hz=None):

@@ -1,4 +1,12 @@
 
+
+def i2c_reset_devices(i2c):
+    i2c.start()
+    i2c.write(b'\x00')
+    i2c.write(b'\x06')
+    i2c.stop()
+
+
 class I2cRegDevice:
 
     def __init__(self, i2c, address):
