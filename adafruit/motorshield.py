@@ -12,6 +12,10 @@ class InvalidMotorError(Exception):
     pass
 
 
+class InvalidSpeedError(Exception):
+    pass
+
+
 motor_pins = [(8, 9, 10), (13, 12, 11), (2, 3, 4), (7, 6, 5)]
 
 
@@ -22,43 +26,64 @@ def get_motor_shield(i2c, address=0x60):
 
 class Motor:
 
-    FREEWHEEL = 0
-    FORWARD = 1
-    BRAKE = 3
-    BACKWARD = 2
-
     def __init__(self, pwm, in_1, in_2):
         self.pwm = pwm
+
         self.in_1 = in_1
         self.in_2 = in_2
 
         self.invert = False
-        self.dir(self.FREEWHEEL)
+        self.speed = 0
 
-    def speed(self, speed=None):
-        if speed is None:
-            return self.pwm.duty()
+    @property
+    def speed(self):
+        if self.in_1.value == self.in_2.value:
+            return 0 # No speed
 
-        self.pwm.duty(speed)
+        return self.pwm.duty() / self.pwm.MAX_DUTY
 
-    def dir(self, direction=None):
-        if direction is None:
-            direction = self.in_1.value()
-            direction += self.in_2.value() << 1
+    @speed.setter
+    def speed(self, value):
 
-            if self.invert and 0b01 <= direction <= 0b10:
-                direction = direction ^ 0b11  # Binary invert.
+        if not -1.0 <= value <= 1.0:
+            raise InvalidSpeedError()
 
-            return direction
+        if self.invert:
+            value = value * -1
 
-        if not 0 <= direction <= 0b11:
-            raise InvalidDirectionError()
+        if value > 0:
+            self.in_1.high = True
+            self.in_2.low = True
+        elif value < 0:
+            self.in_1.low = True
+            self.in_2.high = True
+        else:
+            self.in_1.low = True
+            self.in_2.low = True
+            self.pwm.duty(0)
+            return
 
-        if self.invert and 0b01 <= direction <= 0b10:
-            direction = direction ^ 0b11
+        duty = self.pwm.MAX_DUTY * abs(value)
+        self.pwm.duty(int(duty))
 
-        self.in_1.value(direction & 0b01)
-        self.in_2.value(direction & 0b10)
+    @property
+    def brake(self):
+        if self.in_1.high and self.in_2.high:
+            return self.pwm.duty() / self.pwm.MAX_DUTY
+
+        return 0
+
+    @brake.setter
+    def brake(self, value):
+
+        if not 0 <= value <= 1.0:
+            raise InvalidSpeedError()
+
+        self.in_1.high = True
+        self.in_2.high = True
+        duty = self.pwm.MAX_DUTY * value
+
+        self.pwm.duty(int(duty))
 
 
 class MotorShield:

@@ -35,6 +35,8 @@ class PinWrongTypeError(Exception):
 
 class Pwm:
 
+    MAX_DUTY = 4095
+
     def __init__(self, pca, pin, freq=None, duty=None):
         self.pca = pca
         self.pin = pin
@@ -102,20 +104,32 @@ class Pin:
     def reset(self):
         self.pca.dev.writeto_mem(self.pin_addr, '\x00' * LED_SIZE)
 
-    def value(self, on=None):
-        if on is None:
-            payload = self.pca.dev.readfrom_mem(self.pin_addr, 2)
-            led_on = ustruct.unpack("<H", payload)[0]
-            return bool(led_on & 1 << ALL_BIT)
+    @property
+    def value(self):
+        payload = self.pca.dev.readfrom_mem(self.pin_addr, 2)
+        led_on = ustruct.unpack("<H", payload)[0]
+        return bool(led_on & 1 << ALL_BIT)
 
-        payload = ustruct.pack("<H", bool(on) << ALL_BIT)
+    @value.setter
+    def value(self, value):
+        payload = ustruct.pack("<H", bool(value) << ALL_BIT)
         self.pca.dev.writeto_mem(self.pin_addr, payload)
 
+    @property
     def high(self):
-        self.value(True)
+        return self.value
 
+    @high.setter
+    def high(self, value):
+        self.value = value
+
+    @property
     def low(self):
-        self.value(False)
+        return not self.value
+
+    @low.setter
+    def low(self, value):
+        self.value = not value
 
 
 class Pca9685:
